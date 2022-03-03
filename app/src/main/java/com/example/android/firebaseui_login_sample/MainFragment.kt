@@ -16,8 +16,7 @@
 
 package com.example.android.firebaseui_login_sample
 
-import android.app.Activity
-import android.content.Intent
+import android.app.Activity.RESULT_OK
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
@@ -28,7 +27,8 @@ import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.viewModels
 import com.example.android.firebaseui_login_sample.databinding.FragmentMainBinding
 import com.firebase.ui.auth.AuthUI
-import com.firebase.ui.auth.IdpResponse
+import com.firebase.ui.auth.FirebaseAuthUIActivityResultContract
+import com.firebase.ui.auth.data.model.FirebaseAuthUIAuthenticationResult
 import com.google.firebase.auth.FirebaseAuth
 
 class MainFragment : Fragment() {
@@ -41,6 +41,12 @@ class MainFragment : Fragment() {
     // Get a reference to the ViewModel scoped to this Fragment
     private val viewModel by viewModels<LoginViewModel>()
     private lateinit var binding: FragmentMainBinding
+
+    private val signInLauncher = registerForActivityResult(
+        FirebaseAuthUIActivityResultContract()
+    ) { res ->
+        this.onSignInResult(res)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -59,18 +65,6 @@ class MainFragment : Fragment() {
 
         binding.authButton.setOnClickListener {
             launchSignInFlow()
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == SIGN_IN_RESULT_CODE) {
-            val response = IdpResponse.fromResultIntent(data)
-            if (resultCode == Activity.RESULT_OK) {
-                Log.i(TAG, "Successfully signed in user ${FirebaseAuth.getInstance().currentUser?.displayName}")
-            } else {
-                Log.i(TAG, "Sign in unsuccessful ${response?.error?.errorCode}")
-            }
         }
     }
 
@@ -111,12 +105,20 @@ class MainFragment : Fragment() {
             AuthUI.IdpConfig.GoogleBuilder().build()
         )
 
-        startActivityForResult(
-            AuthUI.getInstance()
-                .createSignInIntentBuilder()
-                .setAvailableProviders(providers)
-                .build(),
-            SIGN_IN_RESULT_CODE
-        )
+        val signInIntent = AuthUI.getInstance()
+            .createSignInIntentBuilder()
+            .setAvailableProviders(providers)
+            .build()
+        signInLauncher.launch(signInIntent)
+    }
+
+    private fun onSignInResult(result: FirebaseAuthUIAuthenticationResult) {
+        val response = result.idpResponse
+        if (result.resultCode == RESULT_OK) {
+            Log.i(TAG, "Successfully signed in user ${FirebaseAuth.getInstance().currentUser?.displayName}")
+            //val user = FirebaseAuth.getInstance().currentUser
+        } else {
+            Log.i(TAG, "Sign in unsuccessful ${response?.error?.errorCode}")
+        }
     }
 }

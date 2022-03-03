@@ -31,4 +31,5 @@
 
     <!--Shared Preference Keys -->
     <string name="preference_fact_type_key">fact_type_pref</string>
+    <string name="unknown_user">Unknown User</string>
 </resources>

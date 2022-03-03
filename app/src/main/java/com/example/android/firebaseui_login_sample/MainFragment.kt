@@ -35,7 +35,6 @@ class MainFragment : Fragment() {
 
     companion object {
         const val TAG = "MainFragment"
-        const val SIGN_IN_RESULT_CODE = 1001
     }
 
     // Get a reference to the ViewModel scoped to this Fragment
@@ -68,24 +67,31 @@ class MainFragment : Fragment() {
         }
     }
 
-    /**
-     * Observes the authentication state and changes the UI accordingly.
-     * If there is a logged in user: (1) show a logout button and (2) display their name.
-     * If there is no logged in user: show a login button
-     */
     private fun observeAuthenticationState() {
         val factToDisplay = viewModel.getFactToDisplay(requireContext())
 
-        // TODO Use the authenticationState variable from LoginViewModel to update the UI
-        //  accordingly.
-        //
-        //  TODO If there is a logged-in user, authButton should display Logout. If the
-        //   user is logged in, you can customize the welcome message by utilizing
-        //   getFactWithPersonalition(). I
-
-        // TODO If there is no logged in user, authButton should display Login and launch the sign
-        //  in screen when clicked. There should also be no personalization of the message
-        //  displayed.
+        viewModel.authenticationState.observe(viewLifecycleOwner) { authenticationState ->
+            when (authenticationState) {
+                LoginViewModel.AuthenticationState.AUTHENTICATED -> {
+                    binding.authButton.apply {
+                        text = getString(R.string.logout_button_text)
+                        setOnClickListener {
+                            AuthUI.getInstance().signOut(requireContext())
+                        }
+                    }
+                    binding.welcomeText.text = getFactWithPersonalization(factToDisplay)
+                }
+                else -> {
+                    binding.authButton.apply {
+                        text = getString(R.string.login_button_text)
+                        setOnClickListener {
+                            launchSignInFlow()
+                        }
+                    }
+                    binding.welcomeText.text = factToDisplay
+                }
+            }
+        }
     }
 
 
@@ -93,10 +99,29 @@ class MainFragment : Fragment() {
         return String.format(
             resources.getString(
                 R.string.welcome_message_authed,
-                FirebaseAuth.getInstance().currentUser?.displayName,
+                getDisplayName(),
                 Character.toLowerCase(fact[0]) + fact.substring(1)
             )
         )
+    }
+
+    private fun getDisplayName() : String {
+        return FirebaseAuth.getInstance().currentUser.let { user ->
+            user?.displayName.let {
+                var displayName = it
+                if (displayName == null || displayName == "") {
+                    val userInfoList = user?.providerData?.iterator()
+                    userInfoList?.forEach uil@{ userInfo ->
+                        displayName = userInfo.displayName
+                        if (displayName != null) return@uil
+                    }
+                }
+                if (displayName == null || displayName == "")
+                    user?.email ?: getString(R.string.unknown_user)
+                else
+                    displayName
+            } ?: getString(R.string.unknown_user)
+        }
     }
 
     private fun launchSignInFlow() {
@@ -115,7 +140,10 @@ class MainFragment : Fragment() {
     private fun onSignInResult(result: FirebaseAuthUIAuthenticationResult) {
         val response = result.idpResponse
         if (result.resultCode == RESULT_OK) {
-            Log.i(TAG, "Successfully signed in user ${FirebaseAuth.getInstance().currentUser?.displayName}")
+            Log.i(
+                TAG,
+                "Successfully signed in user ${FirebaseAuth.getInstance().currentUser?.displayName}"
+            )
             //val user = FirebaseAuth.getInstance().currentUser
         } else {
             Log.i(TAG, "Sign in unsuccessful ${response?.error?.errorCode}")

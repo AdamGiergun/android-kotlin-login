@@ -50,7 +50,7 @@ class LoginFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View? {
+    ): View {
 
         // Inflate the layout for this fragment.
         val binding = DataBindingUtil.inflate<FragmentLoginBinding>(
@@ -59,6 +59,9 @@ class LoginFragment : Fragment() {
 
         binding.authButton.setOnClickListener { launchSignInFlow() }
 
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
+            navController.popBackStack(R.id.mainFragment, false)
+        }
         return binding.root
     }
 

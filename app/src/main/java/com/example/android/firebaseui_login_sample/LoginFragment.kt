@@ -38,7 +38,6 @@ class LoginFragment : Fragment() {
 
     companion object {
         const val TAG = "LoginFragment"
-        const val SIGN_IN_RESULT_CODE = 1001
     }
 
     // Get a reference to the ViewModel scoped to this Fragment.
@@ -74,6 +73,12 @@ class LoginFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         navController = findNavController()
+        viewModel.authenticationState.observe(viewLifecycleOwner) { authenticationState ->
+            when (authenticationState) {
+                LoginViewModel.AuthenticationState.AUTHENTICATED -> navController.popBackStack()
+                else -> Log.e(TAG, "Authentication state that doesn't require any UI change: $authenticationState")
+            }
+        }
     }
 
     private fun launchSignInFlow() {

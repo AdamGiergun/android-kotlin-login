@@ -148,7 +148,7 @@ class MainFragment : Fragment() {
         if (result.resultCode == RESULT_OK) {
             Log.i(
                 TAG,
-                "Successfully signed in user ${FirebaseAuth.getInstance().currentUser?.displayName}"
+                "Successfully signed in user ${getDisplayName()}"
             )
             //val user = FirebaseAuth.getInstance().currentUser
         } else {

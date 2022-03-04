@@ -17,14 +17,12 @@
 package com.example.android.firebaseui_login_sample
 
 import android.app.Activity
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.Observer
 import androidx.navigation.fragment.findNavController
 import androidx.activity.addCallback
 import androidx.databinding.DataBindingUtil
@@ -32,8 +30,8 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.NavController
 import com.example.android.firebaseui_login_sample.databinding.*
 import com.firebase.ui.auth.AuthUI
-import com.firebase.ui.auth.IdpResponse
-import com.google.android.material.snackbar.Snackbar
+import com.firebase.ui.auth.FirebaseAuthUIActivityResultContract
+import com.firebase.ui.auth.data.model.FirebaseAuthUIAuthenticationResult
 import com.google.firebase.auth.FirebaseAuth
 
 class LoginFragment : Fragment() {
@@ -47,6 +45,12 @@ class LoginFragment : Fragment() {
     private val viewModel by viewModels<LoginViewModel>()
 
     private lateinit var navController: NavController
+
+    private val signInLauncher = registerForActivityResult(
+        FirebaseAuthUIActivityResultContract()
+    ) { res ->
+        this.onSignInResult(res)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -62,6 +66,7 @@ class LoginFragment : Fragment() {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             navController.popBackStack(R.id.mainFragment, false)
         }
+
         return binding.root
     }
 
@@ -80,30 +85,42 @@ class LoginFragment : Fragment() {
 
         // Create and launch sign-in intent. We listen to the response of this activity with the
         // SIGN_IN_RESULT_CODE code.
-        startActivityForResult(
-            AuthUI.getInstance().createSignInIntentBuilder().setAvailableProviders(
-                providers
-            ).build(), SIGN_IN_RESULT_CODE
-        )
+        val signInIntent = AuthUI.getInstance()
+            .createSignInIntentBuilder()
+            .setAvailableProviders(providers)
+            .build()
+        signInLauncher.launch(signInIntent)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == SIGN_IN_RESULT_CODE) {
-            val response = IdpResponse.fromResultIntent(data)
-            if (resultCode == Activity.RESULT_OK) {
-                // Successfully signed in user.
-                Log.i(
-                    TAG,
-                    "Successfully signed in user " +
-                            "${FirebaseAuth.getInstance().currentUser?.displayName}!"
-                )
-            } else {
-                // Sign in failed. If response is null the user canceled the sign-in flow using
-                // the back button. Otherwise check response.getError().getErrorCode() and handle
-                // the error.
-                Log.i(TAG, "Sign in unsuccessful ${response?.error?.errorCode}")
-            }
+    private fun onSignInResult(result: FirebaseAuthUIAuthenticationResult) {
+        val response = result.idpResponse
+        if (result.resultCode == Activity.RESULT_OK) {
+            Log.i(
+                TAG,
+                "Successfully signed in user " +
+                        "${getDisplayName()}!"
+            )
+        } else {
+            Log.i(TAG, "Sign in unsuccessful ${response?.error?.errorCode}")
+        }
+    }
+
+    private fun getDisplayName() : String {
+        return FirebaseAuth.getInstance().currentUser.let { user ->
+            user?.displayName.let {
+                var displayName = it
+                if (displayName == null || displayName == "") {
+                    val userInfoList = user?.providerData?.iterator()
+                    userInfoList?.forEach uil@{ userInfo ->
+                        displayName = userInfo.displayName
+                        if (displayName != null) return@uil
+                    }
+                }
+                if (displayName == null || displayName == "")
+                    user?.email ?: getString(R.string.unknown_user)
+                else
+                    displayName
+            } ?: getString(R.string.unknown_user)
         }
     }
 }
